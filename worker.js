@@ -13,6 +13,61 @@ const LANGUAGE_LABELS = {
   "pa-IN": "Punjabi (ਪੰਜਾਬੀ)",
 };
 
+const VALID_BULBUL_V3_SPEAKERS = new Set([
+  "aditya",
+  "ritu",
+  "ashutosh",
+  "priya",
+  "neha",
+  "rahul",
+  "pooja",
+  "rohan",
+  "simran",
+  "kavya",
+  "amit",
+  "dev",
+  "ishita",
+  "shreya",
+  "ratan",
+  "varun",
+  "manan",
+  "sumit",
+  "roopa",
+  "kabir",
+  "aayan",
+  "shubh",
+  "advait",
+  "anand",
+  "tanya",
+  "tarun",
+  "sunny",
+  "mani",
+  "gokul",
+  "vijay",
+  "shruti",
+  "suhani",
+  "mohit",
+  "kavitha",
+  "rehan",
+  "soham",
+  "rupali",
+]);
+
+function normalizeSpeaker(speaker) {
+  const clean = (speaker || "ritu").toLowerCase().trim();
+  if (VALID_BULBUL_V3_SPEAKERS.has(clean)) return clean;
+  if (clean === "arjun") return "aditya";
+  return "ritu";
+}
+
+function sanitizeTextForTTS(text) {
+  return (text || "")
+    .replace(/<think>[\s\S]*?<\/think>/gi, "")
+    .replace(/[*_#`~>]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 function jsonResponse(data, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
@@ -26,7 +81,7 @@ function jsonResponse(data, status = 200) {
 }
 
 function splitTextIntoChunks(text, maxLen = 280) {
-  const cleaned = (text || "").replace(/\s+/g, " ").trim();
+  const cleaned = sanitizeTextForTTS(text);
   if (!cleaned) return [];
   if (cleaned.length <= maxLen) return [cleaned];
 
@@ -50,7 +105,7 @@ function splitTextIntoChunks(text, maxLen = 280) {
     }
   }
   if (current) chunks.push(current);
-  return chunks.slice(0, 5);
+  return chunks.slice(0, 6);
 }
 
 async function sarvamChat(apiKey, messages, temperature = 0.65) {
@@ -75,11 +130,13 @@ async function sarvamChat(apiKey, messages, temperature = 0.65) {
   }
 
   const data = await res.json();
-  return data.choices?.[0]?.message?.content || "";
+  const content = data.choices?.[0]?.message?.content || "";
+  return content.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
 }
 
 async function sarvamTranslate(apiKey, input, targetLang) {
   const trimmed = (input || "").slice(0, 950);
+  if (!trimmed) return "";
   const res = await fetch(`${SARVAM_BASE}/translate`, {
     method: "POST",
     headers: {
@@ -105,6 +162,8 @@ async function sarvamTranslate(apiKey, input, targetLang) {
 }
 
 async function sarvamTTS(apiKey, text, targetLang, speaker = "ritu", pace = 0.88) {
+  const safeSpeaker = normalizeSpeaker(speaker);
+  const safePace = Math.min(1.5, Math.max(0.5, Number(pace) || 0.88));
   const chunks = splitTextIntoChunks(text, 280);
   if (chunks.length === 0) return { audioClips: [], audioSegments: [] };
 
@@ -119,10 +178,10 @@ async function sarvamTTS(apiKey, text, targetLang, speaker = "ritu", pace = 0.88
       },
       body: JSON.stringify({
         text: chunk,
-        target_language_code: targetLang,
-        speaker,
+        target_language_code: targetLang || "hi-IN",
+        speaker: safeSpeaker,
         model: "bulbul:v3",
-        pace: Number(pace) || 0.88,
+        pace: safePace,
         enable_preprocessing: true,
       }),
     });
@@ -167,7 +226,44 @@ export default {
       });
     }
 
-    // 2. Generate Reminiscence Therapy Story + Native Translation + Bulbul v3 Voice
+    // 2. On-Demand TTS endpoint for past capsules & past conversation messages
+    if (url.pathname === "/api/tts" && request.method === "POST") {
+      if (!apiKey) {
+        return jsonResponse(
+          { error: "SARVAM_API_KEY is not configured in environment." },
+          500
+        );
+      }
+
+      try {
+        const body = await request.json();
+        const {
+          text = "",
+          language = "hi-IN",
+          speaker = "ritu",
+          pace = 0.88,
+        } = body;
+
+        const safeSpeaker = normalizeSpeaker(speaker);
+        const ttsResult = await sarvamTTS(
+          apiKey,
+          text,
+          language,
+          safeSpeaker,
+          pace
+        );
+
+        return jsonResponse({
+          speaker: safeSpeaker,
+          audioClips: ttsResult.audioClips,
+          audioSegments: ttsResult.audioSegments,
+        });
+      } catch (err) {
+        return jsonResponse({ error: err.message || "TTS failed" }, 500);
+      }
+    }
+
+    // 3. Generate Reminiscence Therapy Story + Native Translation + Bulbul v3 Voice
     if (url.pathname === "/api/generate-session" && request.method === "POST") {
       if (!apiKey) {
         return jsonResponse(
@@ -188,6 +284,7 @@ export default {
           pace = 0.88,
         } = body;
 
+        const safeSpeaker = normalizeSpeaker(speaker);
         const langName = LANGUAGE_LABELS[language] || language;
 
         const systemPrompt = `You are 'Smriti', an empathetic Indian Reminiscence Therapy specialist for elders living with dementia.
@@ -253,7 +350,7 @@ Family Memory Note: ${memorySeed}`;
             apiKey,
             nativeStory,
             language,
-            speaker,
+            safeSpeaker,
             pace
           );
           audioClips = ttsResult.audioClips;
@@ -274,7 +371,7 @@ Family Memory Note: ${memorySeed}`;
           videoPrompt: parsed.videoPrompt,
           language,
           languageLabel: langName,
-          speaker,
+          speaker: safeSpeaker,
           audioClips,
           audioSegments,
           ttsWarning,
@@ -284,7 +381,7 @@ Family Memory Note: ${memorySeed}`;
       }
     }
 
-    // 3. Interactive Multi-Turn Reminiscence Conversation (sarvam-105b-conversations)
+    // 4. Interactive Multi-Turn Reminiscence Conversation (sarvam-105b-conversations)
     if (url.pathname === "/api/chat-companion" && request.method === "POST") {
       if (!apiKey) {
         return jsonResponse(
@@ -304,47 +401,53 @@ Family Memory Note: ${memorySeed}`;
           messages = [],
         } = body;
 
+        const safeSpeaker = normalizeSpeaker(speaker);
         const langName = LANGUAGE_LABELS[language] || language;
 
         const systemMessage = {
           role: "system",
-          content: `You are Smriti, a gentle, patient reminiscence therapy companion speaking directly with ${parentName} in ${langName} (using native script).
+          content: `You are Smriti, a gentle, patient reminiscence therapy companion speaking directly with ${parentName} in ${langName} (write strictly in the native Indic script of ${langName}, no markdown asterisks).
 Keep your response short (2-3 warm sentences), comforting, never correcting or testing their memory, only validating their feelings and gently inviting another sensory detail about this memory: "${storyContext}".`,
         };
 
-        const reply = await sarvamChat(
+        let reply = await sarvamChat(
           apiKey,
           [systemMessage, ...messages.slice(-8)],
           0.6
         );
 
+        reply = sanitizeTextForTTS(reply);
+
         let audioClips = [];
         let audioSegments = [];
+        let ttsWarning = null;
         try {
           const ttsRes = await sarvamTTS(
             apiKey,
             reply,
             language,
-            speaker,
+            safeSpeaker,
             pace
           );
           audioClips = ttsRes.audioClips;
           audioSegments = ttsRes.audioSegments;
-        } catch {
-          // Non-fatal if TTS fails during quick chat
+        } catch (ttsErr) {
+          ttsWarning = ttsErr.message;
         }
 
         return jsonResponse({
           reply,
+          speaker: safeSpeaker,
           audioClips,
           audioSegments,
+          ttsWarning,
         });
       } catch (err) {
         return jsonResponse({ error: err.message || "Chat failed" }, 500);
       }
     }
 
-    // 4. Static assets fallback (Cloudflare Workers Assets binding)
+    // 5. Static assets fallback (Cloudflare Workers Assets binding)
     if (env?.ASSETS) {
       return env.ASSETS.fetch(request);
     }

@@ -1,7 +1,7 @@
 // ============================================================================
 // Smriti (स्मृति) — Two-Portal Reminiscence Therapy Engine
 // Features: Sarvam Dark/Light Theme, Family Studio + Elder Sanctuary Portals,
-// Synchronized "Writes as it Speaks" Live Story Stage Card, Web Audio Ambience
+// Synchronized "Writes as it Speaks" Live Story Stage Card, On-Demand TTS
 // ============================================================================
 
 const PRESETS = {
@@ -37,7 +37,7 @@ const PRESETS = {
   },
 };
 
-// Built-in Starter Memory Capsules so both portals work out of the box immediately
+// Built-in Starter Memory Capsules (fetches Sarvam bulbul:v3 TTS on-demand when played)
 const STARTER_CAPSULES = [
   {
     id: "cap-monsoon-hi",
@@ -67,6 +67,7 @@ const STARTER_CAPSULES = [
       "Warm 1970s Indian film aesthetic showing a traditional red-oxide courtyard during gentle monsoon rain, paper boats floating in puddles, golden lantern light.",
     audioClips: [],
     audioSegments: [],
+    chatMessages: [],
   },
   {
     id: "cap-monsoon-od",
@@ -77,9 +78,9 @@ const STARTER_CAPSULES = [
     languageLabel: "Odia (ଓଡ଼ିଆ)",
     speaker: "ritu",
     sound: "monsoon",
-    title: "ମହାନଦୀ ତীরର ବର୍ଷା ଓ କାଗଜ ଡଙ୍ଗା",
+    title: "ମହାନଦୀ ତୀରର ବର୍ଷା ଓ କାଗଜ ଡଙ୍ଗା",
     nativeStory:
-      "ମା, ତୁମର ମନେ ଅଛି କି କଟକର ସେହି ପୁରୁଣା ଅଗଣା ଓ ଆষାଢ଼ର ପ୍ରଥମ ବର୍ଷା? ଯେତେବେଳେ ଥଣ୍ଡା ବାରଣ୍ଡାରେ ବସି ତୁମେ ବର୍ଷା ପାଣିରେ କାଗଜ ଡଙ୍ଗା ଭସାଉଥିଲ, ଆଉ ଘର ଭିତରୁ ପାଚିଲା ଆମ୍ବର ମହକ ଓ ପୁରୁଣା ରେଡିଓରୁ ଭଜନ ଶୁଭୁଥିଲା।",
+      "ମା, ତୁମର ମନେ ଅଛି କି କଟକର ସେହି ପୁରୁଣା ଅଗଣା ଓ ଆଷାଢ଼ର ପ୍ରଥମ ବର୍ଷା? ଯେତେବେଳେ ଥଣ୍ଡା ବାରଣ୍ଡାରେ ବସି ତୁମେ ବର୍ଷା ପାଣିରେ କାଗଜ ଡଙ୍ଗା ଭସାଉଥିଲ, ଆଉ ଘର ଭିତରୁ ପାଚିଲା ଆମ୍ବର ମହକ ଓ ପୁରୁଣା ରେଡିଓରୁ ଭଜନ ଶୁଭୁଥିଲା।",
     englishStory:
       "Maa, do you remember that old courtyard in Cuttack and the first monsoon rain? Sitting on the cool verandah floating paper boats in the rainwater, while the fragrance of ripe mangoes and gentle bhajans from the old radio drifted through the house.",
     nativeQuestions: [
@@ -94,6 +95,7 @@ const STARTER_CAPSULES = [
       "Nostalgic 1970s Cuttack courtyard in monsoon rain, paper boats, Mahanadi river breeze, warm sepia cinema lighting.",
     audioClips: [],
     audioSegments: [],
+    chatMessages: [],
   },
 ];
 
@@ -106,7 +108,7 @@ let isPlayingVoice = false;
 let currentAudioObj = null;
 let liveWriterRaf = null;
 let liveWriterTimeout = null;
-let chatHistory = [];
+let playbackRunId = 0;
 
 // ============================================================================
 // 1. SARVAM DARK / LIGHT THEME ENGINE
@@ -301,7 +303,7 @@ function startAmbientSoundscape(type = activeSoundscape) {
 }
 
 // ============================================================================
-// 4. BIG LIVE-WRITING STORY STAGE ENGINE ("Writes as it Speaks")
+// 4. BIG LIVE-WRITING STORY STAGE ENGINE ("Writes as it Speaks" + On-Demand TTS)
 // ============================================================================
 function renderLiveWriterState(words, activeIndex, showCursor = true) {
   const container = document.getElementById("liveNativeWriter");
@@ -335,7 +337,6 @@ function renderLiveWriterState(words, activeIndex, showCursor = true) {
         } `
       );
     } else {
-      // Unspoken words remain softly ghosted or appear as it writes
       htmlParts.push(`<span class="word-token pending">${escaped}</span> `);
     }
   }
@@ -364,6 +365,7 @@ function setSpeakingStageState(speaking, statusText) {
 }
 
 function stopVoiceAndAmbience() {
+  playbackRunId++;
   isPlayingVoice = false;
   if (liveWriterRaf) {
     cancelAnimationFrame(liveWriterRaf);
@@ -387,9 +389,47 @@ function stopVoiceAndAmbience() {
   );
 }
 
+// Fetch Sarvam bulbul:v3 audio on-demand if a past capsule or chat reply lacks cached audioSegments
+async function ensureAudioSegments(targetObj, text, language, speaker) {
+  if (targetObj.audioSegments && targetObj.audioSegments.length > 0) {
+    return targetObj.audioSegments;
+  }
+  if (targetObj.audioClips && targetObj.audioClips.length > 0) {
+    targetObj.audioSegments = targetObj.audioClips.map((clip) => ({
+      text,
+      audio: clip,
+    }));
+    return targetObj.audioSegments;
+  }
+
+  try {
+    const pace = parseFloat(document.getElementById("pace")?.value || "0.88");
+    const res = await fetch("/api/tts", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        text,
+        language: language || "hi-IN",
+        speaker: speaker || "ritu",
+        pace,
+      }),
+    });
+    const data = await res.json();
+    if (res.ok && Array.isArray(data.audioSegments) && data.audioSegments.length > 0) {
+      targetObj.audioClips = data.audioClips || [];
+      targetObj.audioSegments = data.audioSegments;
+      return targetObj.audioSegments;
+    }
+  } catch {
+    // Fallback to paced visual writer if offline
+  }
+  return [];
+}
+
 // Synchronized playback: speaks via Sarvam Bulbul v3 segments AND writes word-by-word!
 async function speakAndWriteCapsule(capsule) {
   stopVoiceAndAmbience();
+  const myRunId = ++playbackRunId;
 
   const fullText = (capsule.nativeStory || "").trim();
   const allWords = fullText.split(/\s+/).filter(Boolean);
@@ -397,6 +437,23 @@ async function speakAndWriteCapsule(capsule) {
 
   activeSoundscape = capsule.sound || activeSoundscape;
   startAmbientSoundscape(activeSoundscape);
+  renderLiveWriterState(allWords, 0, true);
+
+  setSpeakingStageState(
+    true,
+    `Synthesizing Sarvam bulbul:v3 voice (${capsule.speaker || "ritu"})…`
+  );
+
+  const segments = await ensureAudioSegments(
+    capsule,
+    fullText,
+    capsule.language,
+    capsule.speaker
+  );
+
+  // If user clicked stop while TTS was loading, abort cleanly
+  if (myRunId !== playbackRunId || !isPlayingVoice) return;
+
   setSpeakingStageState(
     true,
     `Speaking in ${capsule.languageLabel || capsule.language} (${
@@ -404,20 +461,12 @@ async function speakAndWriteCapsule(capsule) {
     }) with ${activeSoundscape} ambience…`
   );
 
-  const segments =
-    capsule.audioSegments && capsule.audioSegments.length > 0
-      ? capsule.audioSegments
-      : (capsule.audioClips || []).map((clip) => ({
-          text: fullText,
-          audio: clip,
-        }));
-
-  // Case A: We have real Sarvam Bulbul v3 Base64 audio segments!
+  // Case A: Play real Sarvam Bulbul v3 Base64 audio segments!
   if (segments.length > 0) {
     let cumulativeWordIndex = 0;
 
     for (let s = 0; s < segments.length; s++) {
-      if (!isPlayingVoice) break;
+      if (myRunId !== playbackRunId || !isPlayingVoice) break;
       const seg = segments[s];
       const segWords = (seg.text || "").trim().split(/\s+/).filter(Boolean);
       const wordCount = Math.max(1, segWords.length);
@@ -432,7 +481,13 @@ async function speakAndWriteCapsule(capsule) {
         currentAudioObj = audio;
 
         const tick = () => {
-          if (!isPlayingVoice || currentAudioObj !== audio) return;
+          if (
+            myRunId !== playbackRunId ||
+            !isPlayingVoice ||
+            currentAudioObj !== audio
+          ) {
+            return;
+          }
           const dur =
             audio.duration && isFinite(audio.duration) && audio.duration > 0
               ? audio.duration
@@ -467,35 +522,29 @@ async function speakAndWriteCapsule(capsule) {
       cumulativeWordIndex += wordCount;
     }
 
-    if (isPlayingVoice) {
+    if (myRunId === playbackRunId && isPlayingVoice) {
       renderLiveWriterState(allWords, allWords.length - 1, false);
+      setSpeakingStageState(false, "Completed live narration & writing.");
     }
-    setSpeakingStageState(false, "Completed live narration & writing.");
     return;
   }
 
-  // Case B: Starter capsule preview (no pre-fetched Base64 clip yet) ->
-  // Use browser speech synthesis (if available) + paced live word-by-word writing!
-  if (window.speechSynthesis) {
-    const utter = new SpeechSynthesisUtterance(fullText);
-    utter.lang = capsule.language || "hi-IN";
-    utter.rate = 0.88;
-    window.speechSynthesis.speak(utter);
-  }
-
+  // Case B: Offline fallback
   for (let i = 0; i < allWords.length; i++) {
-    if (!isPlayingVoice) break;
+    if (myRunId !== playbackRunId || !isPlayingVoice) break;
     renderLiveWriterState(allWords, i, i < allWords.length - 1);
     await new Promise((r) => {
       liveWriterTimeout = setTimeout(r, 290);
     });
   }
 
-  setSpeakingStageState(false, "Completed live story reveal.");
+  if (myRunId === playbackRunId) {
+    setSpeakingStageState(false, "Completed live story reveal.");
+  }
 }
 
 // ============================================================================
-// 5. CAPSULE GALLERY & PORTAL SYNCHRONIZATION
+// 5. CAPSULE GALLERY & PORTAL SYNCHRONIZATION (Preserving Past Conversation Logs)
 // ============================================================================
 function renderCapsuleLists() {
   const familyList = document.getElementById("capsuleList");
@@ -505,7 +554,6 @@ function renderCapsuleLists() {
   userBar.innerHTML = "";
 
   capsules.forEach((cap) => {
-    // 1. Card in Family Portal
     const card = document.createElement("div");
     card.className = `capsule-card ${
       cap.id === activeCapsule?.id ? "active" : ""
@@ -526,7 +574,6 @@ function renderCapsuleLists() {
     });
     familyList.appendChild(card);
 
-    // 2. Pill in User/Parent Portal Top Bar
     const pill = document.createElement("button");
     pill.type = "button";
     pill.className = `user-capsule-pill ${
@@ -542,9 +589,55 @@ function renderCapsuleLists() {
   });
 }
 
+function renderChatHistoryForActiveCapsule() {
+  const chatLog = document.getElementById("chatLog");
+  chatLog.innerHTML = "";
+  const messages = activeCapsule?.chatMessages || [];
+
+  messages.forEach((msg) => {
+    appendChatBubbleToDOM(msg);
+  });
+}
+
+function appendChatBubbleToDOM(msgObj) {
+  const chatLog = document.getElementById("chatLog");
+  const bubble = document.createElement("div");
+  bubble.className = `chat-bubble ${msgObj.role}`;
+
+  const textSpan = document.createElement("span");
+  textSpan.textContent = msgObj.content;
+  bubble.appendChild(textSpan);
+
+  if (msgObj.role === "assistant") {
+    const replayBtn = document.createElement("button");
+    replayBtn.type = "button";
+    replayBtn.className = "chat-replay-btn";
+    replayBtn.innerHTML = "🔊 Speak Response Aloud";
+    replayBtn.addEventListener("click", async () => {
+      replayBtn.textContent = "🔊 Speaking…";
+      await speakAndWriteCapsule({
+        ...activeCapsule,
+        nativeStory: msgObj.content,
+        audioClips: msgObj.audioClips || [],
+        audioSegments: msgObj.audioSegments || [],
+      });
+      // Cache newly fetched segments back onto the message object
+      replayBtn.textContent = "🔊 Speak Response Aloud";
+    });
+    bubble.appendChild(replayBtn);
+  }
+
+  chatLog.appendChild(bubble);
+  chatLog.scrollTop = chatLog.scrollHeight;
+  return { bubble, textSpan };
+}
+
 function loadCapsuleIntoUserPortal(capsule, autoSpeak = false) {
   if (!capsule) return;
   activeCapsule = capsule;
+  if (!activeCapsule.chatMessages) {
+    activeCapsule.chatMessages = [];
+  }
   stopVoiceAndAmbience();
 
   document.getElementById("sanctuaryHeading").textContent = capsule.title;
@@ -563,11 +656,9 @@ function loadCapsuleIntoUserPortal(capsule, autoSpeak = false) {
   document.getElementById("videoPromptText").textContent =
     capsule.videoPrompt || "";
 
-  // Prepare words in the Big Live Writer Card
   const words = (capsule.nativeStory || "").trim().split(/\s+/).filter(Boolean);
   renderLiveWriterState(words, autoSpeak ? 0 : words.length - 1, autoSpeak);
 
-  // Populate Gentle Recall Questions
   const recallList = document.getElementById("recallList");
   recallList.innerHTML = "";
   (capsule.nativeQuestions || []).forEach((q, idx) => {
@@ -584,12 +675,13 @@ function loadCapsuleIntoUserPortal(capsule, autoSpeak = false) {
     recallList.appendChild(btn);
   });
 
+  renderChatHistoryForActiveCapsule();
+
   if (autoSpeak) {
     speakAndWriteCapsule(capsule);
   }
 }
 
-// Initialize capsules on load
 renderCapsuleLists();
 loadCapsuleIntoUserPortal(activeCapsule, false);
 
@@ -627,7 +719,6 @@ function renderMemoryCanvas() {
     ctx.drawImage(img, ox, oy, nw, nh);
     ctx.restore();
   } else {
-    // Illustrated Sovereign Indian Nostalgia Backdrop
     const grad = ctx.createLinearGradient(0, 0, w, h);
     grad.addColorStop(0, "#121A2D");
     grad.addColorStop(0.5, "#3E2D42");
@@ -842,6 +933,7 @@ document.getElementById("memory-form").addEventListener("submit", async (e) => {
       videoPrompt: data.videoPrompt,
       audioClips: data.audioClips || [],
       audioSegments: data.audioSegments || [],
+      chatMessages: [],
     };
 
     capsules.unshift(newCapsule);
@@ -851,7 +943,6 @@ document.getElementById("memory-form").addEventListener("submit", async (e) => {
     studioStatus.textContent =
       "✦ Memory capsule created! Opening User / Parent Portal…";
 
-    // Switch automatically to the User / Parent Portal and start Live Writing + Speaking!
     switchPortal("user");
     loadCapsuleIntoUserPortal(newCapsule, true);
   } catch (err) {
@@ -863,24 +954,23 @@ document.getElementById("memory-form").addEventListener("submit", async (e) => {
   }
 });
 
-// Interactive Companion Chat (also writes its reply word-by-word as it speaks!)
+// Interactive Companion Chat (saves history per capsule + supports on-demand TTS replay!)
 async function sendCompanionMessage(userText) {
   if (!userText.trim()) return;
-  const chatLog = document.getElementById("chatLog");
+  if (!activeCapsule.chatMessages) activeCapsule.chatMessages = [];
+
   const input = document.getElementById("companionInput");
   input.value = "";
 
-  const userBubble = document.createElement("div");
-  userBubble.className = "chat-bubble user";
-  userBubble.textContent = userText;
-  chatLog.appendChild(userBubble);
+  const userMsgObj = { role: "user", content: userText };
+  activeCapsule.chatMessages.push(userMsgObj);
+  appendChatBubbleToDOM(userMsgObj);
 
-  chatHistory.push({ role: "user", content: userText });
-
-  const botBubble = document.createElement("div");
-  botBubble.className = "chat-bubble assistant";
-  botBubble.textContent = "Smriti is listening warmly…";
-  chatLog.appendChild(botBubble);
+  const chatLog = document.getElementById("chatLog");
+  const loadingBubble = document.createElement("div");
+  loadingBubble.className = "chat-bubble assistant";
+  loadingBubble.textContent = "Smriti is listening warmly…";
+  chatLog.appendChild(loadingBubble);
   chatLog.scrollTop = chatLog.scrollHeight;
 
   try {
@@ -893,7 +983,10 @@ async function sendCompanionMessage(userText) {
         language: activeCapsule?.language || "hi-IN",
         speaker: activeCapsule?.speaker || "ritu",
         pace: parseFloat(document.getElementById("pace").value || "0.88"),
-        messages: chatHistory,
+        messages: activeCapsule.chatMessages.map((m) => ({
+          role: m.role,
+          content: m.content,
+        })),
       }),
     });
 
@@ -902,32 +995,26 @@ async function sendCompanionMessage(userText) {
       throw new Error(data.error || "Companion error");
     }
 
-    const replyWords = (data.reply || "").trim().split(/\s+/).filter(Boolean);
-    chatHistory.push({ role: "assistant", content: data.reply });
+    loadingBubble.remove();
 
-    // Also update the Big Live Stage Card to write & speak Smriti's conversational reply!
-    if (data.audioSegments && data.audioSegments.length > 0) {
-      let currentBubbleText = "";
-      botBubble.textContent = "";
-      for (let i = 0; i < replyWords.length; i++) {
-        currentBubbleText += (i === 0 ? "" : " ") + replyWords[i];
-        botBubble.textContent = currentBubbleText + " ▍";
-        chatLog.scrollTop = chatLog.scrollHeight;
-        setTimeout(() => {}, 60);
-      }
-      botBubble.textContent = data.reply;
+    const assistantMsgObj = {
+      role: "assistant",
+      content: data.reply,
+      audioClips: data.audioClips || [],
+      audioSegments: data.audioSegments || [],
+    };
+    activeCapsule.chatMessages.push(assistantMsgObj);
+    appendChatBubbleToDOM(assistantMsgObj);
 
-      speakAndWriteCapsule({
-        ...activeCapsule,
-        nativeStory: data.reply,
-        audioSegments: data.audioSegments,
-        audioClips: data.audioClips,
-      });
-    } else {
-      botBubble.textContent = data.reply;
-    }
+    // Speak and write Smriti's reply live on the Big Stage Card!
+    await speakAndWriteCapsule({
+      ...activeCapsule,
+      nativeStory: assistantMsgObj.content,
+      audioClips: assistantMsgObj.audioClips,
+      audioSegments: assistantMsgObj.audioSegments,
+    });
   } catch (err) {
-    botBubble.textContent = `Could not reach Smriti: ${err.message}`;
+    loadingBubble.textContent = `Could not reach Smriti: ${err.message}`;
   }
 }
 

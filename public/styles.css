@@ -1362,6 +1362,31 @@ body {
   color: var(--text-primary);
   font-family: var(--font-reader);
   font-size: 1.15rem;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.chat-replay-btn {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 11px;
+  border-radius: 999px;
+  border: 1px solid var(--border-strong);
+  background: var(--sarvam-terracotta-soft);
+  color: var(--sarvam-terracotta);
+  font-family: var(--font-sans);
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.16s ease;
+}
+
+.chat-replay-btn:hover {
+  background: var(--sarvam-terracotta);
+  color: #fff;
 }
 
 .companion-form {
