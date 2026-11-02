@@ -249,10 +249,20 @@
               </div>
             </div>
 
-            <!-- Childhood Photos Upload -->
+            <!-- Childhood Photos Upload / Clipboard Paste -->
             <div class="field">
-              <label for="photoInput">Childhood Photographs (Optional — animates into Memory Reel)</label>
-              <div class="upload-zone" id="uploadZone">
+              <div class="field-label-row">
+                <label for="photoInput">Childhood Photographs (Upload, Drag &amp; Drop, or Paste <code>Ctrl+V</code>)</label>
+                <div class="photo-action-btns">
+                  <button type="button" id="pasteClipboardBtn" class="btn-mini">
+                    📋 Paste Image
+                  </button>
+                  <button type="button" id="clearPhotosBtn" class="btn-mini btn-mini-muted" hidden>
+                    ✕ Clear Photos
+                  </button>
+                </div>
+              </div>
+              <div class="upload-zone" id="uploadZone" tabindex="0">
                 <input
                   id="photoInput"
                   type="file"
@@ -263,8 +273,8 @@
                 <div class="upload-content">
                   <span class="upload-icon">🖼️</span>
                   <div>
-                    <strong>Upload family or childhood photographs</strong>
-                    <p>Slow-pans in the Parent Portal’s vintage memory frame while the story is spoken &amp; written live.</p>
+                    <strong>Click to upload, drag &amp; drop, or press <kbd>Ctrl+V</kbd> to paste images</strong>
+                    <p>Pasted or uploaded family photos slow-pan in the Parent Portal’s vintage memory reel while the story is spoken &amp; written live.</p>
                   </div>
                 </div>
                 <div id="photoThumbs" class="photo-thumbs"></div>

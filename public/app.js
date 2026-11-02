@@ -1,7 +1,8 @@
 // ============================================================================
 // Smriti (स्मृति) — Two-Portal Reminiscence Therapy Engine
 // Features: Sarvam Dark/Light Theme, Family Studio + Elder Sanctuary Portals,
-// Synchronized "Writes as it Speaks" Live Story Stage Card, On-Demand TTS
+// Synchronized "Writes as it Speaks" Live Story Stage Card, On-Demand TTS,
+// Clipboard Image Paste (Ctrl+V) + Drag & Drop, and Saved Capsule Deletion
 // ============================================================================
 
 const PRESETS = {
@@ -37,7 +38,6 @@ const PRESETS = {
   },
 };
 
-// Built-in Starter Memory Capsules (fetches Sarvam bulbul:v3 TTS on-demand when played)
 const STARTER_CAPSULES = [
   {
     id: "cap-monsoon-hi",
@@ -68,6 +68,7 @@ const STARTER_CAPSULES = [
     audioClips: [],
     audioSegments: [],
     chatMessages: [],
+    photoDataUrls: [],
   },
   {
     id: "cap-monsoon-od",
@@ -96,14 +97,49 @@ const STARTER_CAPSULES = [
     audioClips: [],
     audioSegments: [],
     chatMessages: [],
+    photoDataUrls: [],
   },
 ];
 
+// Load saved capsules list from localStorage (excluding large base64 audio to stay within quota)
+function loadPersistedCapsules() {
+  try {
+    const raw = localStorage.getItem("smriti_saved_capsules_v1");
+    if (!raw) return structuredClone(STARTER_CAPSULES);
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) return parsed;
+  } catch {
+    // ignore
+  }
+  return structuredClone(STARTER_CAPSULES);
+}
+
+function persistCapsules() {
+  try {
+    const lightweight = capsules.map((c) => ({
+      ...c,
+      // Keep metadata, stories, questions, and photos; audioSegments synthesize on-demand if needed
+      audioClips: [],
+      audioSegments: [],
+    }));
+    localStorage.setItem(
+      "smriti_saved_capsules_v1",
+      JSON.stringify(lightweight)
+    );
+  } catch {
+    // ignore storage quota warnings
+  }
+}
+
 // Global State
-let capsules = [...STARTER_CAPSULES];
-let activeCapsule = capsules[0];
+let capsules = loadPersistedCapsules();
+let activeCapsule = capsules[0] || null;
 let activeSoundscape = "monsoon";
-let uploadedImages = [];
+
+// Studio staged photos (array of dataURL strings) & active canvas Image objects
+let stagedPhotoDataUrls = [];
+let activeReelImages = [];
+
 let isPlayingVoice = false;
 let currentAudioObj = null;
 let liveWriterRaf = null;
@@ -161,7 +197,9 @@ document.querySelectorAll(".portal-tab").forEach((tab) => {
 
 document.getElementById("goToUserPortalBtn").addEventListener("click", () => {
   switchPortal("user");
-  loadCapsuleIntoUserPortal(activeCapsule, true);
+  if (activeCapsule) {
+    loadCapsuleIntoUserPortal(activeCapsule, true);
+  }
 });
 
 document.getElementById("backToFamilyBtn").addEventListener("click", () => {
@@ -415,7 +453,11 @@ async function ensureAudioSegments(targetObj, text, language, speaker) {
       }),
     });
     const data = await res.json();
-    if (res.ok && Array.isArray(data.audioSegments) && data.audioSegments.length > 0) {
+    if (
+      res.ok &&
+      Array.isArray(data.audioSegments) &&
+      data.audioSegments.length > 0
+    ) {
       targetObj.audioClips = data.audioClips || [];
       targetObj.audioSegments = data.audioSegments;
       return targetObj.audioSegments;
@@ -428,6 +470,7 @@ async function ensureAudioSegments(targetObj, text, language, speaker) {
 
 // Synchronized playback: speaks via Sarvam Bulbul v3 segments AND writes word-by-word!
 async function speakAndWriteCapsule(capsule) {
+  if (!capsule) return;
   stopVoiceAndAmbience();
   const myRunId = ++playbackRunId;
 
@@ -451,7 +494,6 @@ async function speakAndWriteCapsule(capsule) {
     capsule.speaker
   );
 
-  // If user clicked stop while TTS was loading, abort cleanly
   if (myRunId !== playbackRunId || !isPlayingVoice) return;
 
   setSpeakingStageState(
@@ -461,7 +503,6 @@ async function speakAndWriteCapsule(capsule) {
     }) with ${activeSoundscape} ambience…`
   );
 
-  // Case A: Play real Sarvam Bulbul v3 Base64 audio segments!
   if (segments.length > 0) {
     let cumulativeWordIndex = 0;
 
@@ -529,7 +570,6 @@ async function speakAndWriteCapsule(capsule) {
     return;
   }
 
-  // Case B: Offline fallback
   for (let i = 0; i < allWords.length; i++) {
     if (myRunId !== playbackRunId || !isPlayingVoice) break;
     renderLiveWriterState(allWords, i, i < allWords.length - 1);
@@ -544,8 +584,30 @@ async function speakAndWriteCapsule(capsule) {
 }
 
 // ============================================================================
-// 5. CAPSULE GALLERY & PORTAL SYNCHRONIZATION (Preserving Past Conversation Logs)
+// 5. CAPSULE GALLERY, DELETION & PORTAL SYNCHRONIZATION
 // ============================================================================
+function deleteCapsuleById(capsuleId) {
+  capsules = capsules.filter((c) => c.id !== capsuleId);
+  persistCapsules();
+
+  if (activeCapsule?.id === capsuleId) {
+    stopVoiceAndAmbience();
+    activeCapsule = capsules[0] || null;
+    if (activeCapsule) {
+      loadCapsuleIntoUserPortal(activeCapsule, false);
+    }
+  }
+  renderCapsuleLists();
+}
+
+function restoreStarterCapsules() {
+  capsules = structuredClone(STARTER_CAPSULES);
+  activeCapsule = capsules[0];
+  persistCapsules();
+  renderCapsuleLists();
+  loadCapsuleIntoUserPortal(activeCapsule, false);
+}
+
 function renderCapsuleLists() {
   const familyList = document.getElementById("capsuleList");
   const userBar = document.getElementById("userCapsuleBar");
@@ -553,19 +615,70 @@ function renderCapsuleLists() {
   familyList.innerHTML = "";
   userBar.innerHTML = "";
 
+  if (capsules.length === 0) {
+    const emptyBox = document.createElement("div");
+    emptyBox.className = "capsule-empty";
+    emptyBox.innerHTML = `
+      <p>No saved memory capsules right now.</p>
+      <button type="button" class="btn-mini" id="restoreStartersBtn">
+        ↻ Restore Sample Memories
+      </button>
+    `;
+    familyList.appendChild(emptyBox);
+    emptyBox
+      .querySelector("#restoreStartersBtn")
+      ?.addEventListener("click", restoreStarterCapsules);
+    return;
+  }
+
   capsules.forEach((cap) => {
+    // 1. Card in Family Portal with Delete button
     const card = document.createElement("div");
     card.className = `capsule-card ${
       cap.id === activeCapsule?.id ? "active" : ""
     }`;
-    card.innerHTML = `
-      <div class="capsule-top">
-        <span class="capsule-tag">${cap.era} · ${cap.languageLabel || cap.language}</span>
-        <span class="capsule-play-hint">▶ Launch in Parent Portal</span>
-      </div>
-      <h3 class="capsule-title">${cap.title}</h3>
-      <p class="capsule-preview">${cap.nativeStory}</p>
-    `;
+
+    const topRow = document.createElement("div");
+    topRow.className = "capsule-top";
+
+    const tagSpan = document.createElement("span");
+    tagSpan.className = "capsule-tag";
+    tagSpan.textContent = `${cap.era} · ${cap.languageLabel || cap.language}`;
+
+    const actionsDiv = document.createElement("div");
+    actionsDiv.className = "capsule-actions";
+
+    const playHint = document.createElement("span");
+    playHint.className = "capsule-play-hint";
+    playHint.textContent = "▶ Launch";
+
+    const delBtn = document.createElement("button");
+    delBtn.type = "button";
+    delBtn.className = "capsule-delete-btn";
+    delBtn.title = "Delete this saved memory";
+    delBtn.textContent = "🗑️ Delete";
+    delBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      deleteCapsuleById(cap.id);
+    });
+
+    actionsDiv.appendChild(playHint);
+    actionsDiv.appendChild(delBtn);
+    topRow.appendChild(tagSpan);
+    topRow.appendChild(actionsDiv);
+
+    const titleEl = document.createElement("h3");
+    titleEl.className = "capsule-title";
+    titleEl.textContent = cap.title;
+
+    const previewEl = document.createElement("p");
+    previewEl.className = "capsule-preview";
+    previewEl.textContent = cap.nativeStory;
+
+    card.appendChild(topRow);
+    card.appendChild(titleEl);
+    card.appendChild(previewEl);
+
     card.addEventListener("click", () => {
       activeCapsule = cap;
       renderCapsuleLists();
@@ -574,6 +687,7 @@ function renderCapsuleLists() {
     });
     familyList.appendChild(card);
 
+    // 2. Pill in User/Parent Portal Top Bar
     const pill = document.createElement("button");
     pill.type = "button";
     pill.className = `user-capsule-pill ${
@@ -593,10 +707,7 @@ function renderChatHistoryForActiveCapsule() {
   const chatLog = document.getElementById("chatLog");
   chatLog.innerHTML = "";
   const messages = activeCapsule?.chatMessages || [];
-
-  messages.forEach((msg) => {
-    appendChatBubbleToDOM(msg);
-  });
+  messages.forEach((msg) => appendChatBubbleToDOM(msg));
 }
 
 function appendChatBubbleToDOM(msgObj) {
@@ -621,7 +732,6 @@ function appendChatBubbleToDOM(msgObj) {
         audioClips: msgObj.audioClips || [],
         audioSegments: msgObj.audioSegments || [],
       });
-      // Cache newly fetched segments back onto the message object
       replayBtn.textContent = "🔊 Speak Response Aloud";
     });
     bubble.appendChild(replayBtn);
@@ -632,13 +742,24 @@ function appendChatBubbleToDOM(msgObj) {
   return { bubble, textSpan };
 }
 
+function syncActiveReelImages(dataUrls = []) {
+  const sources =
+    dataUrls && dataUrls.length > 0 ? dataUrls : stagedPhotoDataUrls;
+  activeReelImages = [];
+  sources.forEach((url) => {
+    const img = new Image();
+    img.onload = () => activeReelImages.push(img);
+    img.src = url;
+  });
+}
+
 function loadCapsuleIntoUserPortal(capsule, autoSpeak = false) {
   if (!capsule) return;
   activeCapsule = capsule;
-  if (!activeCapsule.chatMessages) {
-    activeCapsule.chatMessages = [];
-  }
+  if (!activeCapsule.chatMessages) activeCapsule.chatMessages = [];
   stopVoiceAndAmbience();
+
+  syncActiveReelImages(capsule.photoDataUrls || []);
 
   document.getElementById("sanctuaryHeading").textContent = capsule.title;
   document.getElementById(
@@ -683,7 +804,9 @@ function loadCapsuleIntoUserPortal(capsule, autoSpeak = false) {
 }
 
 renderCapsuleLists();
-loadCapsuleIntoUserPortal(activeCapsule, false);
+if (activeCapsule) {
+  loadCapsuleIntoUserPortal(activeCapsule, false);
+}
 
 // ============================================================================
 // 6. VINTAGE MEMORY REEL CANVAS ANIMATOR (Ken Burns + Sarvam Sepia Aesthetic)
@@ -699,15 +822,15 @@ function renderMemoryCanvas() {
 
   ctx.clearRect(0, 0, w, h);
 
-  if (uploadedImages.length > 0) {
+  if (activeReelImages.length > 0) {
     const slideDuration = 4.5;
     const totalIndex = Math.floor(animTick / slideDuration);
-    const img = uploadedImages[totalIndex % uploadedImages.length];
+    const img = activeReelImages[totalIndex % activeReelImages.length];
     const progress = (animTick % slideDuration) / slideDuration;
     const scale = 1.04 + progress * 0.12;
 
-    const iw = img.width;
-    const ih = img.height;
+    const iw = img.width || w;
+    const ih = img.height || h;
     const ratio = Math.max(w / iw, h / ih) * scale;
     const nw = iw * ratio;
     const nh = ih * ratio;
@@ -783,7 +906,147 @@ function renderMemoryCanvas() {
 requestAnimationFrame(renderMemoryCanvas);
 
 // ============================================================================
-// 7. UI CONTROLS, FORM SUBMISSION & LIVE-WRITING COMPANION CHAT
+// 7. PHOTO UPLOAD, DRAG & DROP, AND CLIPBOARD PASTE (Ctrl+V)
+// ============================================================================
+const uploadZone = document.getElementById("uploadZone");
+const photoInput = document.getElementById("photoInput");
+const photoThumbs = document.getElementById("photoThumbs");
+const pasteClipboardBtn = document.getElementById("pasteClipboardBtn");
+const clearPhotosBtn = document.getElementById("clearPhotosBtn");
+
+function renderPhotoThumbnails() {
+  photoThumbs.innerHTML = "";
+  clearPhotosBtn.hidden = stagedPhotoDataUrls.length === 0;
+
+  stagedPhotoDataUrls.forEach((dataUrl, idx) => {
+    const wrap = document.createElement("div");
+    wrap.className = "thumb-wrap";
+
+    const img = document.createElement("img");
+    img.src = dataUrl;
+    img.alt = `Childhood photo ${idx + 1}`;
+
+    const removeBtn = document.createElement("button");
+    removeBtn.type = "button";
+    removeBtn.className = "thumb-remove-btn";
+    removeBtn.title = "Remove photo";
+    removeBtn.textContent = "×";
+    removeBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      stagedPhotoDataUrls.splice(idx, 1);
+      renderPhotoThumbnails();
+      syncActiveReelImages(stagedPhotoDataUrls);
+    });
+
+    wrap.appendChild(img);
+    wrap.appendChild(removeBtn);
+    photoThumbs.appendChild(wrap);
+  });
+
+  syncActiveReelImages(stagedPhotoDataUrls);
+}
+
+function addImageFilesOrBlobs(blobs) {
+  const validBlobs = Array.from(blobs || []).filter(
+    (b) => b && b.type && b.type.startsWith("image/")
+  );
+  if (validBlobs.length === 0) return false;
+
+  validBlobs.forEach((blob) => {
+    if (stagedPhotoDataUrls.length >= 8) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      if (stagedPhotoDataUrls.length < 8) {
+        stagedPhotoDataUrls.push(ev.target.result);
+        renderPhotoThumbnails();
+      }
+    };
+    reader.readAsDataURL(blob);
+  });
+  return true;
+}
+
+uploadZone.addEventListener("click", () => photoInput.click());
+
+photoInput.addEventListener("change", (e) => {
+  addImageFilesOrBlobs(e.target.files);
+  photoInput.value = "";
+});
+
+// Drag & Drop support on Upload Zone
+uploadZone.addEventListener("dragover", (e) => {
+  e.preventDefault();
+  uploadZone.classList.add("drag-over");
+});
+uploadZone.addEventListener("dragleave", () => {
+  uploadZone.classList.remove("drag-over");
+});
+uploadZone.addEventListener("drop", (e) => {
+  e.preventDefault();
+  uploadZone.classList.remove("drag-over");
+  if (e.dataTransfer?.files?.length) {
+    addImageFilesOrBlobs(e.dataTransfer.files);
+  }
+});
+
+// Global Ctrl+V / Cmd+V Clipboard Image Paste anywhere on page
+window.addEventListener("paste", (e) => {
+  const items = e.clipboardData?.items;
+  if (!items) return;
+  const imageBlobs = [];
+  for (const item of items) {
+    if (item.type.startsWith("image/")) {
+      const file = item.getAsFile();
+      if (file) imageBlobs.push(file);
+    }
+  }
+  if (imageBlobs.length > 0) {
+    addImageFilesOrBlobs(imageBlobs);
+    const studioStatus = document.getElementById("studioStatus");
+    if (studioStatus) {
+      studioStatus.textContent = `✦ Pasted ${imageBlobs.length} image(s) from clipboard into Memory Reel!`;
+    }
+  }
+});
+
+// Explicit "📋 Paste Image" button using Async Clipboard API
+pasteClipboardBtn.addEventListener("click", async () => {
+  const studioStatus = document.getElementById("studioStatus");
+  try {
+    if (!navigator.clipboard?.read) {
+      studioStatus.textContent =
+        "Press Ctrl+V (or Cmd+V) anywhere on the page to paste your copied image.";
+      return;
+    }
+    const clipboardItems = await navigator.clipboard.read();
+    const blobs = [];
+    for (const item of clipboardItems) {
+      const imgType = item.types.find((t) => t.startsWith("image/"));
+      if (imgType) {
+        const blob = await item.getType(imgType);
+        blobs.push(blob);
+      }
+    }
+    if (blobs.length > 0) {
+      addImageFilesOrBlobs(blobs);
+      studioStatus.textContent = `✦ Pasted ${blobs.length} image(s) from clipboard!`;
+    } else {
+      studioStatus.textContent =
+        "No image found in clipboard. Copy an image first or press Ctrl+V.";
+    }
+  } catch {
+    studioStatus.textContent =
+      "Tip: Press Ctrl+V (or Cmd+V) directly on the page to paste an image from your clipboard.";
+  }
+});
+
+clearPhotosBtn.addEventListener("click", () => {
+  stagedPhotoDataUrls = [];
+  renderPhotoThumbnails();
+});
+
+// ============================================================================
+// 8. UI CONTROLS, FORM SUBMISSION & LIVE-WRITING COMPANION CHAT
 // ============================================================================
 document.getElementById("pace").addEventListener("input", (e) => {
   document.getElementById("paceVal").textContent = `${e.target.value}x`;
@@ -819,7 +1082,7 @@ document.getElementById("ambientToggleBtn").addEventListener("click", () => {
 document.getElementById("playSessionBtn").addEventListener("click", () => {
   if (isPlayingVoice) {
     stopVoiceAndAmbience();
-  } else {
+  } else if (activeCapsule) {
     speakAndWriteCapsule(activeCapsule);
   }
 });
@@ -850,34 +1113,6 @@ document.querySelectorAll(".size-btn").forEach((btn) => {
     btn.classList.add("active");
     const container = document.getElementById("storyContainer");
     container.className = `live-writer-column size-${btn.dataset.size}`;
-  });
-});
-
-// Photo Upload Handler
-const uploadZone = document.getElementById("uploadZone");
-const photoInput = document.getElementById("photoInput");
-const photoThumbs = document.getElementById("photoThumbs");
-
-uploadZone.addEventListener("click", () => photoInput.click());
-photoInput.addEventListener("change", (e) => {
-  const files = Array.from(e.target.files || []).slice(0, 6);
-  if (!files.length) return;
-  uploadedImages = [];
-  photoThumbs.innerHTML = "";
-
-  files.forEach((file) => {
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const img = new Image();
-      img.onload = () => uploadedImages.push(img);
-      img.src = ev.target.result;
-
-      const thumb = document.createElement("img");
-      thumb.src = ev.target.result;
-      thumb.alt = file.name;
-      photoThumbs.appendChild(thumb);
-    };
-    reader.readAsDataURL(file);
   });
 });
 
@@ -934,10 +1169,12 @@ document.getElementById("memory-form").addEventListener("submit", async (e) => {
       audioClips: data.audioClips || [],
       audioSegments: data.audioSegments || [],
       chatMessages: [],
+      photoDataUrls: [...stagedPhotoDataUrls],
     };
 
     capsules.unshift(newCapsule);
     activeCapsule = newCapsule;
+    persistCapsules();
     renderCapsuleLists();
 
     studioStatus.textContent =
@@ -954,9 +1191,9 @@ document.getElementById("memory-form").addEventListener("submit", async (e) => {
   }
 });
 
-// Interactive Companion Chat (saves history per capsule + supports on-demand TTS replay!)
+// Interactive Companion Chat
 async function sendCompanionMessage(userText) {
-  if (!userText.trim()) return;
+  if (!userText.trim() || !activeCapsule) return;
   if (!activeCapsule.chatMessages) activeCapsule.chatMessages = [];
 
   const input = document.getElementById("companionInput");
@@ -1004,9 +1241,9 @@ async function sendCompanionMessage(userText) {
       audioSegments: data.audioSegments || [],
     };
     activeCapsule.chatMessages.push(assistantMsgObj);
+    persistCapsules();
     appendChatBubbleToDOM(assistantMsgObj);
 
-    // Speak and write Smriti's reply live on the Big Stage Card!
     await speakAndWriteCapsule({
       ...activeCapsule,
       nativeStory: assistantMsgObj.content,
