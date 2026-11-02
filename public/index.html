@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -25,7 +25,7 @@
       </svg>
     </div>
 
-    <!-- Top Navigation Bar -->
+    <!-- Top Navigation Bar with Portal Switcher & Dark/Light Theme Toggle -->
     <header class="topbar">
       <div class="container topbar-inner">
         <div class="brand">
@@ -33,7 +33,7 @@
             <svg viewBox="0 0 40 40" fill="none">
               <circle cx="20" cy="20" r="18" stroke="currentColor" stroke-width="1.5" />
               <circle cx="20" cy="20" r="11" stroke="currentColor" stroke-width="1.2" opacity="0.65" />
-              <path d="M20 4C23 13 27 17 36 20C27 23 23 27 20 36C17 27 13 23 4 20C13 17 17 13 20 4Z" fill="currentColor" fill-opacity="0.16" stroke="currentColor" stroke-width="1.4" />
+              <path d="M20 4C23 13 27 17 36 20C27 23 23 27 20 36C17 27 13 23 4 20C13 17 17 13 20 4Z" fill="currentColor" fill-opacity="0.18" stroke="currentColor" stroke-width="1.4" />
               <circle cx="20" cy="20" r="3" fill="currentColor" />
             </svg>
           </div>
@@ -42,287 +42,408 @@
               <span class="brand-name">Smriti</span>
               <span class="brand-indic">स्मृति · ସ୍ମୃତି · স্মৃতি</span>
             </div>
-            <p class="brand-sub">Dementia Reminiscence Therapy · Built on Sarvam AI</p>
+            <p class="brand-sub">Sovereign Indian Language Reminiscence Therapy · Sarvam AI</p>
           </div>
         </div>
 
-        <div class="api-pills">
-          <span class="pill pill-terracotta">sarvam-105b-conversations</span>
-          <span class="pill pill-indigo">sarvam-translate:v1</span>
-          <span class="pill pill-sand">bulbul:v3 TTS</span>
+        <!-- Two-Portal Segmented Switcher -->
+        <nav class="portal-switcher" aria-label="Portal Navigation">
+          <button
+            type="button"
+            class="portal-tab active"
+            data-portal="family"
+            id="tabFamily"
+          >
+            <span class="tab-icon">👨‍👩‍👧</span>
+            <div class="tab-text">
+              <span class="tab-title">Family Member Portal</span>
+              <span class="tab-caption">Create &amp; Curate Memories</span>
+            </div>
+          </button>
+
+          <button
+            type="button"
+            class="portal-tab"
+            data-portal="user"
+            id="tabUser"
+          >
+            <span class="tab-icon">🪷</span>
+            <div class="tab-text">
+              <span class="tab-title">User / Parent Portal</span>
+              <span class="tab-caption">Live Speaking Story Sanctuary</span>
+            </div>
+          </button>
+        </nav>
+
+        <!-- Right Controls: API Badges + Theme Switcher -->
+        <div class="topbar-actions">
+          <div class="api-pills">
+            <span class="pill pill-terracotta">sarvam-105b</span>
+            <span class="pill pill-indigo">bulbul:v3</span>
+          </div>
+
+          <button
+            type="button"
+            id="themeToggleBtn"
+            class="theme-toggle"
+            title="Switch between Sarvam Dark & Warm Parchment Light Theme"
+          >
+            <span id="themeIcon">☀️</span>
+            <span id="themeLabel">Light Mode</span>
+          </button>
         </div>
       </div>
     </header>
 
-    <!-- Hero Section -->
-    <section class="hero">
-      <div class="container hero-inner">
-        <div class="hero-badge">
-          <span class="dot"></span>
-          <span>Sovereign Indian Language Care · 10+ Native Scripts & Voices</span>
+    <!-- =================================================================== -->
+    <!-- PORTAL 1: FAMILY MEMBER PORTAL (Memory Studio & Capsule Library)    -->
+    <!-- =================================================================== -->
+    <div id="portal-family" class="portal-view active">
+      <section class="hero">
+        <div class="container hero-inner">
+          <div class="hero-badge">
+            <span class="dot"></span>
+            <span>Family Caregiver Studio · Powered by Sarvam AI</span>
+          </div>
+          <h1 class="hero-title">
+            Write a childhood memory in English. Let <em>Sarvam AI</em> bring it home in your parent’s mother tongue.
+          </h1>
+          <p class="hero-lead">
+            Design a soothing memory capsule with old family photographs, native Indian script translation, expressive <code>bulbul:v3</code> voice narration, and nostalgic ambient soundscapes—then launch it in the <strong>User / Parent Portal</strong>.
+          </p>
         </div>
-        <h1 class="hero-title">
-          Bring childhood stories home in the <em>language of their heart</em>.
-        </h1>
-        <p class="hero-lead">
-          Share a brief memory in English and upload old family photographs. Smriti weaves a gentle, sensory reminiscence story, translates it into your parent’s native tongue, and narrates it aloud with soothing childhood soundscapes.
-        </p>
-      </div>
-    </section>
-
-    <!-- Main Two-Column Workspace -->
-    <main class="container workspace">
-      <!-- LEFT COLUMN: Caregiver Memory Studio -->
-      <section class="panel studio-panel" aria-labelledby="studio-heading">
-        <div class="panel-header">
-          <div>
-            <span class="eyebrow">Step 01 · Family & Student Portal</span>
-            <h2 id="studio-heading" class="panel-title">Craft a Memory Session</h2>
-          </div>
-          <div class="preset-group">
-            <span class="preset-label">Try sample:</span>
-            <button type="button" class="chip-btn" data-preset="monsoon">🌧️ Monsoon Courtyard</button>
-            <button type="button" class="chip-btn" data-preset="train">🚂 Summer Train</button>
-            <button type="button" class="chip-btn" data-preset="kitchen">🪔 Sunday Kitchen</button>
-          </div>
-        </div>
-
-        <form id="memory-form" class="studio-form">
-          <div class="field-grid-3">
-            <div class="field">
-              <label for="parentName">Parent's Affectionate Name</label>
-              <input
-                id="parentName"
-                name="parentName"
-                type="text"
-                value="Maa"
-                placeholder="e.g., Maa, Bapa, Nani, Appa"
-                required
-              />
-            </div>
-
-            <div class="field">
-              <label for="era">Childhood / Youth Era</label>
-              <select id="era" name="era">
-                <option value="1960s">1960s</option>
-                <option value="1970s" selected>1970s</option>
-                <option value="1980s">1980s</option>
-                <option value="1990s">1990s</option>
-              </select>
-            </div>
-
-            <div class="field">
-              <label for="hometown">Hometown / Setting</label>
-              <input
-                id="hometown"
-                name="hometown"
-                type="text"
-                value="Cuttack by the Mahanadi river"
-                placeholder="e.g., Cuttack, Mysuru, Old Delhi"
-                required
-              />
-            </div>
-          </div>
-
-          <div class="field">
-            <label for="memorySeed">Write the Childhood Memory (in English)</label>
-            <textarea
-              id="memorySeed"
-              name="memorySeed"
-              rows="4"
-              placeholder="Describe people, aromas, songs, or small moments from their past..."
-              required
-            >Sitting on the cool red-oxide verandah during the first July monsoon rain, floating handmade paper boats in the courtyard puddles while Dadi roasted sweet ripe mangoes and played soft bhajans on the old Murphy radio.</textarea>
-          </div>
-
-          <div class="field-grid-3">
-            <div class="field">
-              <label for="language">Parent's Native Language</label>
-              <select id="language" name="language">
-                <option value="hi-IN">Hindi — हिन्दी</option>
-                <option value="od-IN">Odia — ଓଡ଼ିଆ</option>
-                <option value="bn-IN">Bengali — বাংলা</option>
-                <option value="ta-IN">Tamil — தமிழ்</option>
-                <option value="te-IN">Telugu — తెలుగు</option>
-                <option value="mr-IN">Marathi — मराठी</option>
-                <option value="gu-IN">Gujarati — ગુજરાતી</option>
-                <option value="kn-IN">Kannada — ಕನ್ನಡ</option>
-                <option value="ml-IN">Malayalam — മലയാളം</option>
-                <option value="pa-IN">Punjabi — ਪੰਜਾਬੀ</option>
-              </select>
-            </div>
-
-            <div class="field">
-              <label for="speaker">Sarvam Bulbul v3 Voice</label>
-              <select id="speaker" name="speaker">
-                <option value="ritu" selected>Ritu (Warm & Maternal)</option>
-                <option value="ishita">Ishita (Gentle & Clear)</option>
-                <option value="shubh">Shubh (Calm & Paternal)</option>
-                <option value="arjun">Arjun (Deep & Reassuring)</option>
-              </select>
-            </div>
-
-            <div class="field">
-              <label for="pace">Narration Pace (<span id="paceVal">0.88x</span>)</label>
-              <input
-                id="pace"
-                name="pace"
-                type="range"
-                min="0.75"
-                max="1.05"
-                step="0.03"
-                value="0.88"
-              />
-              <span class="field-hint">Slower pacing aids dementia comprehension</span>
-            </div>
-          </div>
-
-          <!-- Ambient Soundscape Selector -->
-          <div class="field">
-            <label>Therapeutic Childhood Soundscape (Web Audio Layer)</label>
-            <div class="soundscape-grid" role="radiogroup" aria-label="Ambient Soundscape">
-              <button type="button" class="sound-card active" data-sound="monsoon">
-                <span class="sound-icon">🌧️</span>
-                <span class="sound-name">Courtyard Rain</span>
-                <span class="sound-desc">Gentle monsoon drops</span>
-              </button>
-              <button type="button" class="sound-card" data-sound="tanpura">
-                <span class="sound-icon">🪕</span>
-                <span class="sound-name">Morning Tanpura</span>
-                <span class="sound-desc">Warm Sa-Pa harmonic drone</span>
-              </button>
-              <button type="button" class="sound-card" data-sound="temple">
-                <span class="sound-icon">🔔</span>
-                <span class="sound-name">Evening Aarti Bell</span>
-                <span class="sound-desc">Soft brass resonance</span>
-              </button>
-              <button type="button" class="sound-card" data-sound="train">
-                <span class="sound-icon">🚂</span>
-                <span class="sound-name">Meter-Gauge Rail</span>
-                <span class="sound-desc">Rhythmic track cadence</span>
-              </button>
-            </div>
-          </div>
-
-          <!-- Childhood Photos Upload for Memory Reel -->
-          <div class="field">
-            <label for="photoInput">Childhood Photographs (Optional — animates into Memory Reel)</label>
-            <div class="upload-zone" id="uploadZone">
-              <input
-                id="photoInput"
-                type="file"
-                accept="image/*"
-                multiple
-                class="sr-only"
-              />
-              <div class="upload-content">
-                <span class="upload-icon">🖼️</span>
-                <div>
-                  <strong>Upload childhood or family photos</strong>
-                  <p>We’ll weave them into a slow-panning vintage memory reel alongside Sarvam narration (or use our illustrated Indian nostalgia scenes).</p>
-                </div>
-              </div>
-              <div id="photoThumbs" class="photo-thumbs"></div>
-            </div>
-          </div>
-
-          <button type="submit" id="generateBtn" class="btn-primary">
-            <span class="btn-sparkle">✦</span>
-            <span id="generateBtnText">Weave Native Memory & Voice with Sarvam AI</span>
-          </button>
-        </form>
       </section>
 
-      <!-- RIGHT COLUMN: Parent Reminiscence Therapy Sanctuary -->
-      <section class="panel sanctuary-panel" aria-labelledby="sanctuary-heading">
-        <div class="panel-header">
-          <div>
-            <span class="eyebrow">Step 02 · Elder Therapy Sanctuary</span>
-            <h2 id="sanctuary-heading" class="panel-title" id="sessionTitle">
-              Waiting for a Memory…
-            </h2>
+      <main class="container workspace-family">
+        <!-- Left: Studio Form -->
+        <section class="panel studio-panel" aria-labelledby="studio-heading">
+          <div class="panel-header">
+            <div>
+              <span class="eyebrow">Caregiver Memory Builder</span>
+              <h2 id="studio-heading" class="panel-title">Craft a New Memory Capsule</h2>
+            </div>
+            <div class="preset-group">
+              <span class="preset-label">Presets:</span>
+              <button type="button" class="chip-btn" data-preset="monsoon">🌧️ Monsoon Courtyard</button>
+              <button type="button" class="chip-btn" data-preset="train">🚂 Summer Train</button>
+              <button type="button" class="chip-btn" data-preset="kitchen">🪔 Sunday Kitchen</button>
+            </div>
           </div>
 
+          <form id="memory-form" class="studio-form">
+            <div class="field-grid-3">
+              <div class="field">
+                <label for="parentName">Parent's Affectionate Name</label>
+                <input
+                  id="parentName"
+                  name="parentName"
+                  type="text"
+                  value="Maa"
+                  placeholder="e.g., Maa, Bapa, Nani, Appa"
+                  required
+                />
+              </div>
+
+              <div class="field">
+                <label for="era">Childhood / Youth Era</label>
+                <select id="era" name="era">
+                  <option value="1960s">1960s</option>
+                  <option value="1970s" selected>1970s</option>
+                  <option value="1980s">1980s</option>
+                  <option value="1990s">1990s</option>
+                </select>
+              </div>
+
+              <div class="field">
+                <label for="hometown">Hometown / Setting</label>
+                <input
+                  id="hometown"
+                  name="hometown"
+                  type="text"
+                  value="Cuttack by the Mahanadi river"
+                  placeholder="e.g., Cuttack, Mysuru, Old Delhi"
+                  required
+                />
+              </div>
+            </div>
+
+            <div class="field">
+              <label for="memorySeed">Describe the Childhood Memory (in English)</label>
+              <textarea
+                id="memorySeed"
+                name="memorySeed"
+                rows="4"
+                placeholder="Describe people, aromas, songs, or small moments from their past..."
+                required
+              >Sitting on the cool red-oxide verandah during the first July monsoon rain, floating handmade paper boats in the courtyard puddles while Dadi roasted sweet ripe mangoes and played soft bhajans on the old Murphy radio.</textarea>
+            </div>
+
+            <div class="field-grid-3">
+              <div class="field">
+                <label for="language">Parent's Native Language</label>
+                <select id="language" name="language">
+                  <option value="hi-IN">Hindi — हिन्दी</option>
+                  <option value="od-IN">Odia — ଓଡ଼ିଆ</option>
+                  <option value="bn-IN">Bengali — বাংলা</option>
+                  <option value="ta-IN">Tamil — தமிழ்</option>
+                  <option value="te-IN">Telugu — తెలుగు</option>
+                  <option value="mr-IN">Marathi — मराठी</option>
+                  <option value="gu-IN">Gujarati — ગુજરાતી</option>
+                  <option value="kn-IN">Kannada — ಕನ್ನಡ</option>
+                  <option value="ml-IN">Malayalam — മലയാളം</option>
+                  <option value="pa-IN">Punjabi — ਪੰਜਾਬੀ</option>
+                </select>
+              </div>
+
+              <div class="field">
+                <label for="speaker">Sarvam Bulbul v3 Voice</label>
+                <select id="speaker" name="speaker">
+                  <option value="ritu" selected>Ritu (Warm &amp; Maternal)</option>
+                  <option value="ishita">Ishita (Gentle &amp; Clear)</option>
+                  <option value="shubh">Shubh (Calm &amp; Paternal)</option>
+                  <option value="arjun">Arjun (Deep &amp; Reassuring)</option>
+                </select>
+              </div>
+
+              <div class="field">
+                <label for="pace">Speech Pace (<span id="paceVal">0.88x</span>)</label>
+                <input
+                  id="pace"
+                  name="pace"
+                  type="range"
+                  min="0.75"
+                  max="1.05"
+                  step="0.03"
+                  value="0.88"
+                />
+                <span class="field-hint">Unhurried pacing for dementia care</span>
+              </div>
+            </div>
+
+            <!-- Ambient Soundscape Selector -->
+            <div class="field">
+              <label>Therapeutic Childhood Soundscape (Web Audio Layer)</label>
+              <div class="soundscape-grid" role="radiogroup" aria-label="Ambient Soundscape">
+                <button type="button" class="sound-card active" data-sound="monsoon">
+                  <span class="sound-icon">🌧️</span>
+                  <span class="sound-name">Courtyard Rain</span>
+                  <span class="sound-desc">Gentle monsoon drops</span>
+                </button>
+                <button type="button" class="sound-card" data-sound="tanpura">
+                  <span class="sound-icon">🪕</span>
+                  <span class="sound-name">Morning Tanpura</span>
+                  <span class="sound-desc">Warm Sa-Pa harmonic drone</span>
+                </button>
+                <button type="button" class="sound-card" data-sound="temple">
+                  <span class="sound-icon">🔔</span>
+                  <span class="sound-name">Evening Aarti Bell</span>
+                  <span class="sound-desc">Soft brass resonance</span>
+                </button>
+                <button type="button" class="sound-card" data-sound="train">
+                  <span class="sound-icon">🚂</span>
+                  <span class="sound-name">Meter-Gauge Rail</span>
+                  <span class="sound-desc">Rhythmic track cadence</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Childhood Photos Upload -->
+            <div class="field">
+              <label for="photoInput">Childhood Photographs (Optional — animates into Memory Reel)</label>
+              <div class="upload-zone" id="uploadZone">
+                <input
+                  id="photoInput"
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  class="sr-only"
+                />
+                <div class="upload-content">
+                  <span class="upload-icon">🖼️</span>
+                  <div>
+                    <strong>Upload family or childhood photographs</strong>
+                    <p>Slow-pans in the Parent Portal’s vintage memory frame while the story is spoken &amp; written live.</p>
+                  </div>
+                </div>
+                <div id="photoThumbs" class="photo-thumbs"></div>
+              </div>
+            </div>
+
+            <div class="studio-submit-row">
+              <button type="submit" id="generateBtn" class="btn-primary">
+                <span class="btn-sparkle">✦</span>
+                <span id="generateBtnText">Create Memory &amp; Launch in Parent Portal →</span>
+              </button>
+            </div>
+            <div id="studioStatus" class="studio-status" aria-live="polite"></div>
+          </form>
+        </section>
+
+        <!-- Right: Family Saved Memory Capsules & Architecture Preview -->
+        <aside class="panel capsules-panel">
+          <div class="panel-header">
+            <div>
+              <span class="eyebrow">Curated for Your Parent</span>
+              <h2 class="panel-title">Saved Memory Capsules</h2>
+            </div>
+            <button type="button" id="goToUserPortalBtn" class="btn-outline-terracotta">
+              Open Parent Portal 🪷
+            </button>
+          </div>
+
+          <p class="capsule-intro">
+            Select any memory capsule below to immediately open it in the <strong>User / Parent Portal</strong> with live synchronized writing &amp; voice playback.
+          </p>
+
+          <div id="capsuleList" class="capsule-list"></div>
+
+          <!-- Gemini Video Scene Prompt Box -->
+          <div class="gemini-prompt-box">
+            <div class="gemini-prompt-header">
+              <span>🎬 Gemini Video / Veo Scene Prompt</span>
+              <span class="pill pill-sand">Auto-Generated</span>
+            </div>
+            <p id="videoPromptText">
+              Warm vintage 1970s Indian film aesthetic showing a Cuttack courtyard during monsoon rain, paper boats floating in puddles, golden lantern glow.
+            </p>
+          </div>
+        </aside>
+      </main>
+    </div>
+
+    <!-- =================================================================== -->
+    <!-- PORTAL 2: USER / PARENT PORTAL (Big Live "Writes as it Speaks" Card)-->
+    <!-- =================================================================== -->
+    <div id="portal-user" class="portal-view">
+      <main class="container sanctuary-container">
+        <!-- Sanctuary Top Controls Bar -->
+        <div class="sanctuary-bar">
+          <button type="button" id="backToFamilyBtn" class="btn-back">
+            ← Back to Family Studio
+          </button>
+
+          <div class="sanctuary-capsule-pills" id="userCapsuleBar"></div>
+
           <div class="text-size-controls" aria-label="Story font size">
+            <span class="size-label">Text Size:</span>
             <button type="button" class="size-btn" data-size="normal">A</button>
             <button type="button" class="size-btn active" data-size="large">A+</button>
             <button type="button" class="size-btn" data-size="xlarge">A++</button>
           </div>
         </div>
 
-        <!-- Architectural Gateway Frame for Visual Memory Reel -->
-        <div class="gateway-frame">
-          <div class="gateway-arch-badge">
-            <span id="reelEraBadge">1970s · Nostalgic Memory Reel</span>
-          </div>
-          <canvas id="memoryCanvas" width="760" height="360"></canvas>
-          <div class="reel-caption" id="reelCaption">
-            Upload family photos or click “Weave Native Memory” to begin the visual & audio therapy session.
-          </div>
-        </div>
+        <!-- THE BIG LIVE-WRITING STORY STAGE CARD ("Writes as it Speaks") -->
+        <section class="live-stage-card" id="liveStageCard" aria-live="polite">
+          <!-- Ambient Glow Header inside Big Card -->
+          <div class="live-stage-header">
+            <div class="live-meta">
+              <span class="live-badge" id="liveSpeakingBadge">
+                <span class="pulse-ring"></span>
+                <span id="liveBadgeText">Ready to Speak &amp; Write</span>
+              </span>
+              <span class="live-lang-pill" id="nativeLangTag">
+                Hindi (हिन्दी) · Bulbul v3 Voice
+              </span>
+            </div>
 
-        <!-- Unified Audio Therapy Deck (Sarvam Bulbul v3 + Web Audio Ambience) -->
-        <div class="audio-deck">
-          <div class="audio-controls-row">
-            <button type="button" id="playSessionBtn" class="btn-play" disabled>
-              <span id="playIcon">▶</span>
-              <span id="playLabel">Play Voice & Soundscape</span>
-            </button>
-
-            <button type="button" id="ambientToggleBtn" class="btn-secondary">
-              🔊 Preview Soundscape Only
-            </button>
-
-            <div class="volume-control">
-              <label for="ambientVol">Ambience</label>
-              <input
-                id="ambientVol"
-                type="range"
-                min="0"
-                max="0.7"
-                step="0.05"
-                value="0.28"
-              />
+            <!-- Live Animated Voice Waveform Bars -->
+            <div class="voice-waveform" id="voiceWaveform" aria-hidden="true">
+              <span></span><span></span><span></span><span></span><span></span>
+              <span></span><span></span><span></span><span></span><span></span>
+              <span></span><span></span>
             </div>
           </div>
-          <div id="audioStatus" class="audio-status">
-            Ready · Sarvam <code>bulbul:v3</code> narration + procedural ambient therapy soundscape
-          </div>
-        </div>
 
-        <!-- Bilingual Story Display (Native Script Primary + English Companion) -->
-        <div id="storyContainer" class="story-container size-large">
-          <div class="story-card native-story-card">
-            <div class="card-tag-row">
-              <span class="card-tag" id="nativeLangTag">Native Indian Script · Sarvam Translate</span>
+          <!-- Story Title -->
+          <h1 class="live-story-title" id="sanctuaryHeading">
+            Monsoon Afternoons by the Courtyard Verandah
+          </h1>
+
+          <!-- Two-Column Theater inside the Big Card: Left = Live Typewriter Text, Right = Visual Reel -->
+          <div class="live-theater-grid">
+            <!-- Left: Synchronized Live-Writing Native Script + English Subtitle -->
+            <div class="live-writer-column size-large" id="storyContainer">
+              <div class="live-native-paper">
+                <div class="paper-caption">
+                  <span>🪷 Speaking &amp; Writing Live in Mother Tongue</span>
+                  <span id="writerProgressLabel">0%</span>
+                </div>
+
+                <!-- Progress bar that tracks speech + writing -->
+                <div class="writer-progress-track">
+                  <div class="writer-progress-fill" id="writerProgressFill"></div>
+                </div>
+
+                <!-- THE LIVE WRITING AREA -->
+                <div id="liveNativeWriter" class="live-native-text"></div>
+              </div>
+
+              <!-- English Companion Subtitle Card -->
+              <div class="live-english-sub">
+                <span class="sub-label">English Memory Translation</span>
+                <p id="englishStoryText">
+                  Do you remember sitting on the cool red-oxide verandah during the first July monsoon rain, watching little paper boats drift across the courtyard while the sweet aroma of roasted mangoes and soft bhajans filled the afternoon air?
+                </p>
+              </div>
             </div>
-            <p id="nativeStoryText" class="story-body indic-script">
-              यहाँ आपके माता-पिता की मातृभाषा में उनकी बचपन की कहानी शांत और स्नेहपूर्ण आवाज़ में सुनाई देगी।
-            </p>
-          </div>
 
-          <div class="story-card english-story-card">
-            <div class="card-tag-row">
-              <span class="card-tag">English Narrative · sarvam-105b-conversations</span>
+            <!-- Right: Gateway Arch Visual Memory Reel + Big Audio Controls -->
+            <div class="live-visual-column">
+              <div class="gateway-frame">
+                <div class="gateway-arch-badge">
+                  <span id="reelEraBadge">1970s · Nostalgic Memory Reel</span>
+                </div>
+                <canvas id="memoryCanvas" width="680" height="380"></canvas>
+                <div class="reel-caption" id="reelCaption">
+                   Gentle visual memory reel synchronized with voice narration &amp; childhood ambience.
+                </div>
+              </div>
+
+              <!-- Big Elder-Friendly Audio Deck -->
+              <div class="elder-audio-deck">
+                <button type="button" id="playSessionBtn" class="btn-elder-play">
+                  <span class="elder-play-icon" id="playIcon">▶</span>
+                  <div class="elder-play-text">
+                    <strong id="playLabel">Speak &amp; Write Story Aloud</strong>
+                    <span id="audioStatus">Sarvam bulbul:v3 voice + soothing childhood soundscape</span>
+                  </div>
+                </button>
+
+                <div class="elder-sound-row">
+                  <button type="button" id="ambientToggleBtn" class="btn-secondary">
+                    🔊 Preview Soundscape Only
+                  </button>
+
+                  <div class="volume-control">
+                    <label for="ambientVol">Ambience Volume</label>
+                    <input
+                      id="ambientVol"
+                      type="range"
+                      min="0"
+                      max="0.7"
+                      step="0.05"
+                      value="0.28"
+                    />
+                  </div>
+                </div>
+              </div>
             </div>
-            <p id="englishStoryText" class="story-body">
-              Your parent’s personalized reminiscence narrative will appear here, crafted with gentle sensory cues—rain on warm courtyard stone, familiar voices, and unhurried warmth.
-            </p>
           </div>
-        </div>
+        </section>
 
-        <!-- Gentle Recall Prompts & Interactive Sarvam Companion -->
-        <div class="recall-section">
+        <!-- Bottom Section: Gentle Recall Prompts & Live-Writing Conversation Companion -->
+        <section class="panel elder-companion-panel">
           <div class="recall-header">
-            <h3>Gentle Recall Prompts & Interactive Companion</h3>
-            <p>Tap a question below or type/speak what your parent remembers—<strong>Smriti</strong> responds warmly in their native language.</p>
+            <div>
+              <span class="eyebrow">Interactive Conversation · sarvam-105b-conversations</span>
+              <h3>Gentle Recall Questions &amp; Voice Companion</h3>
+            </div>
+            <p>
+              Tap any question below or speak into the microphone—<strong>Smriti</strong> will reply warmly and write her words aloud as she speaks.
+            </p>
           </div>
 
-          <div id="recallList" class="recall-list">
-            <button type="button" class="recall-pill" data-prompt="मैं उस आँगन और बारिश की खुशबू को याद कर रही हूँ।">
-              “मैं उस आँगन और बारिश की खुशबू को याद कर रही हूँ।”
-            </button>
-          </div>
+          <div id="recallList" class="recall-list"></div>
 
           <div id="chatLog" class="chat-log" aria-live="polite"></div>
 
@@ -330,31 +451,23 @@
             <input
               id="companionInput"
               type="text"
-              placeholder="Reply in native language or English (or click 🎙️ to speak)..."
+              placeholder="Speak or type what you remember in your language..."
             />
-            <button type="button" id="micBtn" class="btn-icon" title="Voice Input">
-              🎙️
+            <button type="button" id="micBtn" class="btn-icon" title="Speak in your native language">
+              🎙️ Speak
             </button>
             <button type="submit" id="sendChatBtn" class="btn-send">
-              Ask Smriti
+              Reply to Smriti ✦
             </button>
           </form>
-        </div>
-
-        <!-- Gemini Video Scene Prompt Box -->
-        <details class="gemini-prompt-box">
-          <summary>🎬 Gemini Video / Veo Scene Prompt (Auto-Generated)</summary>
-          <p id="videoPromptText">
-            Generate a session to get a tailored scene prompt for Google Gemini Video / Veo.
-          </p>
-        </details>
-      </section>
-    </main>
+        </section>
+      </main>
+    </div>
 
     <footer class="footer">
       <div class="container footer-inner">
-        <span>Smriti (स्मृति) — Reminiscence Therapy for Dementia Care</span>
-        <span>Powered by <strong>Sarvam AI</strong> (<code>sarvam-105b-conversations</code> · <code>sarvam-translate:v1</code> · <code>bulbul:v3</code>) &amp; Cloudflare Workers</span>
+        <span>Smriti (स्मृति) — Dementia Reminiscence Therapy</span>
+        <span>Built with <strong>Sarvam AI</strong> (<code>sarvam-105b-conversations</code> · <code>sarvam-translate:v1</code> · <code>bulbul:v3</code>)</span>
       </div>
     </footer>
 

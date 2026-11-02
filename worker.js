@@ -25,7 +25,7 @@ function jsonResponse(data, status = 200) {
   });
 }
 
-function splitTextIntoChunks(text, maxLen = 450) {
+function splitTextIntoChunks(text, maxLen = 280) {
   const cleaned = (text || "").replace(/\s+/g, " ").trim();
   if (!cleaned) return [];
   if (cleaned.length <= maxLen) return [cleaned];
@@ -50,7 +50,7 @@ function splitTextIntoChunks(text, maxLen = 450) {
     }
   }
   if (current) chunks.push(current);
-  return chunks.slice(0, 3);
+  return chunks.slice(0, 5);
 }
 
 async function sarvamChat(apiKey, messages, temperature = 0.65) {
@@ -105,10 +105,11 @@ async function sarvamTranslate(apiKey, input, targetLang) {
 }
 
 async function sarvamTTS(apiKey, text, targetLang, speaker = "ritu", pace = 0.88) {
-  const chunks = splitTextIntoChunks(text, 450);
-  if (chunks.length === 0) return [];
+  const chunks = splitTextIntoChunks(text, 280);
+  if (chunks.length === 0) return { audioClips: [], audioSegments: [] };
 
   const audioClips = [];
+  const audioSegments = [];
   for (const chunk of chunks) {
     const res = await fetch(`${SARVAM_BASE}/text-to-speech`, {
       method: "POST",
@@ -134,9 +135,13 @@ async function sarvamTTS(apiKey, text, targetLang, speaker = "ritu", pace = 0.88
     const data = await res.json();
     if (Array.isArray(data.audios) && data.audios[0]) {
       audioClips.push(data.audios[0]);
+      audioSegments.push({
+        text: chunk,
+        audio: data.audios[0],
+      });
     }
   }
-  return audioClips;
+  return { audioClips, audioSegments };
 }
 
 export default {
@@ -241,15 +246,18 @@ Family Memory Note: ${memorySeed}`;
 
         // Generate soothing TTS audio in native language via Bulbul v3
         let audioClips = [];
+        let audioSegments = [];
         let ttsWarning = null;
         try {
-          audioClips = await sarvamTTS(
+          const ttsResult = await sarvamTTS(
             apiKey,
             nativeStory,
             language,
             speaker,
             pace
           );
+          audioClips = ttsResult.audioClips;
+          audioSegments = ttsResult.audioSegments;
         } catch (ttsErr) {
           ttsWarning = ttsErr.message;
         }
@@ -268,6 +276,7 @@ Family Memory Note: ${memorySeed}`;
           languageLabel: langName,
           speaker,
           audioClips,
+          audioSegments,
           ttsWarning,
         });
       } catch (err) {
@@ -310,8 +319,17 @@ Keep your response short (2-3 warm sentences), comforting, never correcting or t
         );
 
         let audioClips = [];
+        let audioSegments = [];
         try {
-          audioClips = await sarvamTTS(apiKey, reply, language, speaker, pace);
+          const ttsRes = await sarvamTTS(
+            apiKey,
+            reply,
+            language,
+            speaker,
+            pace
+          );
+          audioClips = ttsRes.audioClips;
+          audioSegments = ttsRes.audioSegments;
         } catch {
           // Non-fatal if TTS fails during quick chat
         }
@@ -319,6 +337,7 @@ Keep your response short (2-3 warm sentences), comforting, never correcting or t
         return jsonResponse({
           reply,
           audioClips,
+          audioSegments,
         });
       } catch (err) {
         return jsonResponse({ error: err.message || "Chat failed" }, 500);
