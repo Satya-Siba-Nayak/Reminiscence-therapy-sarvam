@@ -1,0 +1,18 @@
+{
+  "name": "reminiscence-therapy-sarvam",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "start": "node --env-file=.env index.js",
+    "web": "node --env-file=.env server.js",
+    "cf:dev": "npx wrangler dev",
+    "cf:deploy": "npx wrangler deploy"
+  },
+  "dependencies": {
+    "sarvamai": "^1.1.14"
+  },
+  "devDependencies": {
+    "wrangler": "^4.0.0"
+  }
+}
