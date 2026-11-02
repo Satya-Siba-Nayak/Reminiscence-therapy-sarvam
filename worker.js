@@ -13,51 +13,54 @@ const LANGUAGE_LABELS = {
   "pa-IN": "Punjabi (ਪੰਜਾਬੀ)",
 };
 
-const VALID_BULBUL_V3_SPEAKERS = new Set([
-  "aditya",
-  "ritu",
-  "ashutosh",
-  "priya",
-  "neha",
-  "rahul",
-  "pooja",
-  "rohan",
-  "simran",
-  "kavya",
-  "amit",
-  "dev",
-  "ishita",
-  "shreya",
-  "ratan",
-  "varun",
-  "manan",
-  "sumit",
-  "roopa",
-  "kabir",
-  "aayan",
-  "shubh",
-  "advait",
-  "anand",
-  "tanya",
-  "tarun",
-  "sunny",
-  "mani",
-  "gokul",
-  "vijay",
-  "shruti",
-  "suhani",
-  "mohit",
-  "kavitha",
-  "rehan",
-  "soham",
-  "rupali",
+const LEGACY_TO_V4_SPEAKER = {
+  ritu: "ritu_hi_customer_warm",
+  ishita: "ishita_en_stories",
+  priya: "roopa_hi_companion",
+  simran: "simran_en_therapist",
+  shubh: "shubh_en_narration_gentle",
+  aditya: "ratan_hi_latenight_warm",
+  arjun: "ratan_hi_latenight_warm",
+  ratan: "ratan_hi_latenight_warm",
+  kabir: "kabir_hi_conversational",
+};
+
+const VALID_BULBUL_V4_SPEAKERS = new Set([
+  "ritu_hi_customer_warm",
+  "ritu_hi_conversation",
+  "roopa_hi_companion",
+  "roopa_hi_narration",
+  "simran_en_therapist",
+  "simran_hi_narration",
+  "ishita_en_stories",
+  "ishita_enhi_companion",
+  "sanchita_en_companion",
+  "shalini_hi_companion",
+  "suman_hi_companion",
+  "shubh_en_narration_gentle",
+  "shubh_hi_stories_mixed",
+  "shubh_hi_devotional",
+  "ratan_hi_latenight_warm",
+  "kabir_hi_conversational",
+  "aditya_hi_conversational",
+  "arnab_bn_conversation",
+  "roopa_bn_conversational",
+  "pooja_gu_conversational",
+  "chaitra_kn_narration",
+  "rupali_mr_stories",
+  "soham_mr_narration",
+  "harpreet_pa_narration",
+  "gokul_ta_narration",
+  "vijay_ta_narration",
+  "kavitha_te_narration",
+  "tarun_te_narration",
 ]);
 
 function normalizeSpeaker(speaker) {
-  const clean = (speaker || "ritu").toLowerCase().trim();
-  if (VALID_BULBUL_V3_SPEAKERS.has(clean)) return clean;
-  if (clean === "arjun") return "aditya";
-  return "ritu";
+  const clean = (speaker || "ritu_hi_customer_warm").toLowerCase().trim();
+  if (VALID_BULBUL_V4_SPEAKERS.has(clean)) return clean;
+  if (LEGACY_TO_V4_SPEAKER[clean]) return LEGACY_TO_V4_SPEAKER[clean];
+  return "ritu_hi_customer_warm";
 }
 
 function sanitizeTextForTTS(text) {
@@ -161,7 +164,13 @@ async function sarvamTranslate(apiKey, input, targetLang) {
   return data.translated_text || trimmed;
 }
 
-async function sarvamTTS(apiKey, text, targetLang, speaker = "ritu", pace = 0.88) {
+async function sarvamTTS(
+  apiKey,
+  text,
+  targetLang,
+  speaker = "ritu_hi_customer_warm",
+  pace = 0.88
+) {
   const safeSpeaker = normalizeSpeaker(speaker);
   const safePace = Math.min(1.5, Math.max(0.5, Number(pace) || 0.88));
   const chunks = splitTextIntoChunks(text, 280);
@@ -180,7 +189,7 @@ async function sarvamTTS(apiKey, text, targetLang, speaker = "ritu", pace = 0.88
         text: chunk,
         target_language_code: targetLang || "hi-IN",
         speaker: safeSpeaker,
-        model: "bulbul:v3",
+        model: "bulbul:v4-flash",
         pace: safePace,
         enable_preprocessing: true,
       }),
@@ -221,7 +230,7 @@ export default {
         models: {
           chat: "sarvam-105b-conversations",
           translate: "sarvam-translate:v1",
-          tts: "bulbul:v3",
+          tts: "bulbul:v4-flash",
         },
       });
     }

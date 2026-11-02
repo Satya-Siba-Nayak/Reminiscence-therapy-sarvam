@@ -11,7 +11,7 @@ const PRESETS = {
     era: "1970s",
     hometown: "Cuttack by the Mahanadi river",
     language: "od-IN",
-    speaker: "ritu",
+    speaker: "ritu_hi_customer_warm",
     sound: "monsoon",
     memorySeed:
       "Sitting on the cool red-oxide verandah during the first July monsoon rain, floating handmade paper boats in the courtyard puddles while Bou roasted sweet ripe mangoes and played soft bhajans on the old Murphy radio.",
@@ -21,7 +21,7 @@ const PRESETS = {
     era: "1960s",
     hometown: "Malda to Howrah meter-gauge railway",
     language: "bn-IN",
-    speaker: "shubh",
+    speaker: "shubh_en_narration_gentle",
     sound: "train",
     memorySeed:
       "Looking out the wooden-shuttered window of the morning passenger train during summer holidays, sipping hot chai from earthen kulhads at a small station while green paddy fields and palm trees drifted past.",
@@ -31,7 +31,7 @@ const PRESETS = {
     era: "1980s",
     hometown: "Old Jaipur haveli courtyard",
     language: "hi-IN",
-    speaker: "ritu",
+    speaker: "ritu_hi_customer_warm",
     sound: "temple",
     memorySeed:
       "Sunday mornings when the aroma of cardamom tea and warm ghee parathas filled the sunlit courtyard while evening temple bells echoed down the lane and everyone gathered around the radio.",
@@ -46,7 +46,7 @@ const STARTER_CAPSULES = [
     hometown: "Old Family Courtyard",
     language: "hi-IN",
     languageLabel: "Hindi (हिन्दी)",
-    speaker: "ritu",
+    speaker: "ritu_hi_customer_warm",
     sound: "monsoon",
     title: "सावन की पहली बारिश और कागज़ की कश्तियाँ",
     nativeStory:
@@ -77,7 +77,7 @@ const STARTER_CAPSULES = [
     hometown: "Cuttack by the Mahanadi",
     language: "od-IN",
     languageLabel: "Odia (ଓଡ଼ିଆ)",
-    speaker: "ritu",
+    speaker: "ritu_hi_customer_warm",
     sound: "monsoon",
     title: "ମହାନଦୀ ତୀରର ବର୍ଷା ଓ କାଗଜ ଡଙ୍ଗା",
     nativeStory:
@@ -423,11 +423,11 @@ function stopVoiceAndAmbience() {
   stopAmbientSoundscape();
   setSpeakingStageState(
     false,
-    "Sarvam bulbul:v3 voice + soothing childhood soundscape"
+    "Sarvam bulbul:v4-flash voice + soothing childhood soundscape"
   );
 }
 
-// Fetch Sarvam bulbul:v3 audio on-demand if a past capsule or chat reply lacks cached audioSegments
+// Fetch Sarvam bulbul:v4-flash audio on-demand if a past capsule or chat reply lacks cached audioSegments
 async function ensureAudioSegments(targetObj, text, language, speaker) {
   if (targetObj.audioSegments && targetObj.audioSegments.length > 0) {
     return targetObj.audioSegments;
@@ -448,7 +448,7 @@ async function ensureAudioSegments(targetObj, text, language, speaker) {
       body: JSON.stringify({
         text,
         language: language || "hi-IN",
-        speaker: speaker || "ritu",
+        speaker: speaker || "ritu_hi_customer_warm",
         pace,
       }),
     });
@@ -468,7 +468,7 @@ async function ensureAudioSegments(targetObj, text, language, speaker) {
   return [];
 }
 
-// Synchronized playback: speaks via Sarvam Bulbul v3 segments AND writes word-by-word!
+// Synchronized playback: speaks via Sarvam Bulbul v4 Flash segments AND writes word-by-word!
 async function speakAndWriteCapsule(capsule) {
   if (!capsule) return;
   stopVoiceAndAmbience();
@@ -484,7 +484,7 @@ async function speakAndWriteCapsule(capsule) {
 
   setSpeakingStageState(
     true,
-    `Synthesizing Sarvam bulbul:v3 voice (${capsule.speaker || "ritu"})…`
+    `Synthesizing Sarvam bulbul:v4-flash voice (${capsule.speaker || "ritu_hi_customer_warm"})…`
   );
 
   const segments = await ensureAudioSegments(
@@ -498,9 +498,7 @@ async function speakAndWriteCapsule(capsule) {
 
   setSpeakingStageState(
     true,
-    `Speaking in ${capsule.languageLabel || capsule.language} (${
-      capsule.speaker || "ritu"
-    }) with ${activeSoundscape} ambience…`
+    `Speaking in ${capsule.languageLabel || capsule.language} (bulbul:v4-flash) with ${activeSoundscape} ambience…`
   );
 
   if (segments.length > 0) {
@@ -764,8 +762,8 @@ function loadCapsuleIntoUserPortal(capsule, autoSpeak = false) {
   document.getElementById("sanctuaryHeading").textContent = capsule.title;
   document.getElementById(
     "nativeLangTag"
-  ).textContent = `${capsule.languageLabel || capsule.language} · Bulbul v3 (${
-    capsule.speaker || "ritu"
+  ).textContent = `${capsule.languageLabel || capsule.language} · Bulbul v4 Flash (${
+    capsule.speaker || "ritu_hi_customer_warm"
   })`;
   document.getElementById("englishStoryText").textContent =
     capsule.englishStory;
@@ -1137,7 +1135,7 @@ document.getElementById("memory-form").addEventListener("submit", async (e) => {
   generateBtnText.textContent =
     "Weaving Story, Translating & Synthesizing Voice via Sarvam AI…";
   studioStatus.textContent =
-    "✦ Calling sarvam-105b-conversations → sarvam-translate:v1 → bulbul:v3…";
+    "✦ Calling sarvam-105b-conversations → sarvam-translate:v1 → bulbul:v4-flash…";
 
   try {
     const res = await fetch("/api/generate-session", {
